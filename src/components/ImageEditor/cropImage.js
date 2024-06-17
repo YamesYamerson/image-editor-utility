@@ -1,25 +1,24 @@
-export const getCroppedImg = (imageSrc, crop) => {
+export const getCroppedImg = (imageSrc, pixelCrop) => {
     const image = new Image();
     image.src = imageSrc;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
   
-    const { width, height } = crop;
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
   
     return new Promise((resolve) => {
       image.onload = () => {
         ctx.drawImage(
           image,
-          crop.x,
-          crop.y,
-          crop.width,
-          crop.height,
+          pixelCrop.x,
+          pixelCrop.y,
+          pixelCrop.width,
+          pixelCrop.height,
           0,
           0,
-          crop.width,
-          crop.height
+          pixelCrop.width,
+          pixelCrop.height
         );
   
         resolve(canvas.toDataURL('image/jpeg'));

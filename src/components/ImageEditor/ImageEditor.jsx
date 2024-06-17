@@ -243,7 +243,7 @@ const ImageEditor = () => {
             </div>
           </div>
           {isCropping && (
-            <div className="crop-container">
+            <div className="crop-container" style={{ position: 'relative', height: '400px' }}>
               <Cropper
                 image={image}
                 crop={crop}
