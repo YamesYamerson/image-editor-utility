@@ -19,11 +19,13 @@ const ImageEditor = () => {
   const [image, setImage] = useState(null);
   const [imageWidth, setImageWidth] = useState(800);
   const [imageHeight, setImageHeight] = useState(600);
-  const [columnWidth, setColumnWidth] = useState(20); // percentage of the image width
+  const [columnWidth, setColumnWidth] = useState(60); // percentage of the image width
   const [columnOpacity, setColumnOpacity] = useState(0.9); // opacity of the column
   const [previewImage, setPreviewImage] = useState(null);
   const [isColumnVisible, setIsColumnVisible] = useState(true); // toggle white column
   const [cropData, setCropData] = useState({ width: 0, height: 0 });
+  const [aspectRatio, setAspectRatio] = useState(0);
+  const [isCropperVisible, setIsCropperVisible] = useState(true); // toggle cropper visibility
   const cropperRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -31,8 +33,15 @@ const ImageEditor = () => {
     const file = acceptedFiles[0];
     const reader = new FileReader();
     reader.onload = (e) => {
-      setImage(e.target.result);
-      setPreviewImage(e.target.result);
+      const img = new Image();
+      img.onload = () => {
+        setImageWidth(img.width);
+        setImageHeight(img.height);
+        setAspectRatio(img.width / img.height);
+        setImage(e.target.result);
+        setPreviewImage(e.target.result);
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   };
@@ -77,9 +86,11 @@ const ImageEditor = () => {
   const handleStandardSizeChange = (size) => {
     setImageWidth(size.width);
     setImageHeight(size.height);
+    setAspectRatio(size.width / size.height);
   };
 
-  const setAspectRatio = (ratio) => {
+  const changeAspectRatio = (ratio) => {
+    setAspectRatio(ratio);
     if (cropperRef.current) {
       cropperRef.current.cropper.setAspectRatio(ratio);
     }
@@ -133,7 +144,7 @@ const ImageEditor = () => {
       )}
       {image && (
         <>
-          <div className="controls justify-content-center row my-4">
+          <div className="flex-row justify-content-center row my-4">
             <div className="form-group col-2">
               <label>
                 Width:
@@ -174,7 +185,7 @@ const ImageEditor = () => {
             </div>
             <div className="form-group col-2">
               <label>
-                Column Width (%):
+                Col. Width (%):
                 <span
                   className="ms-1"
                   data-bs-toggle="tooltip"
@@ -195,7 +206,7 @@ const ImageEditor = () => {
             </div>
             <div className="form-group col-2">
               <label>
-                Column Opacity:
+                Col. Opacity:
                 <span
                   className="ms-1"
                   data-bs-toggle="tooltip"
@@ -217,7 +228,7 @@ const ImageEditor = () => {
             </div>
             <div className="form-group col-2">
               <label>
-                Column Visibility:
+                Column:
                 <span
                   className="ms-1"
                   data-bs-toggle="tooltip"
@@ -235,15 +246,15 @@ const ImageEditor = () => {
               </button>
             </div>
           </div>
-          <div className="row my-3">
-            <div className="form-group col-6">
+          <div className="row my-3 justify-content-center">
+            <div className="form-group col-3">
               <label>
-                Background Sizes:
+                Sizes:
                 <span
                   className="ms-1"
                   data-bs-toggle="tooltip"
                   data-bs-placement="top"
-                  title="Select a predefined size for the background."
+                  title="Select a predefined size for the background. The size of the output image is limited by the uploaded image size."
                 >
                   <i className="bi bi-info-circle"></i>
                 </span>
@@ -260,58 +271,78 @@ const ImageEditor = () => {
                 ))}
               </select>
             </div>
-            <div className="col-6">
+            <div className="form-group col-4">
               <label>
                 Aspect Ratio:
                 <span
                   className="ms-1"
                   data-bs-toggle="tooltip"
                   data-bs-placement="top"
-                  title="Adjust the aspect ratio of the cropping area."
+                  title="Adjust the aspect ratio of the cropping area. 16:9 is for landscape, 9:16 is for portrait, and Free is for custom sizes."
                 >
                   <i className="bi bi-info-circle"></i>
                 </span>
               </label>
-              <div>
-                <button className="btn btn-secondary mx-1 mt-0" onClick={() => setAspectRatio(16 / 9)}>
-                  Desktop 16:9
+              <div className="d-flex justify-content-around">
+                <button
+                  className={`btn ${aspectRatio === 16 / 9 ? 'btn-primary' : 'btn-secondary'} mx-1 mt-0 flex-fill`}
+                  onClick={() => changeAspectRatio(16 / 9)}
+                >
+                  16:9
                 </button>
-                <button className="btn btn-secondary mx-1 mt-0" onClick={() => setAspectRatio(9 / 16)}>
-                  Mobile 9:16
+                <button
+                  className={`btn ${aspectRatio === 9 / 16 ? 'btn-primary' : 'btn-secondary'} mx-1 mt-0 flex-fill`}
+                  onClick={() => changeAspectRatio(9 / 16)}
+                >
+                  9:16
                 </button>
-                <button className="btn btn-secondary mx-1 mt-0" onClick={() => setAspectRatio(0)}>
+                <button
+                  className={`btn ${aspectRatio === 0 ? 'btn-primary' : 'btn-secondary'} mx-1 mt-0 flex-fill`}
+                  onClick={() => changeAspectRatio(0)}
+                >
                   Free
                 </button>
               </div>
             </div>
-          </div>
-          <div className="position-relative" style={{ height: 400 }}>
-            <Cropper
-              src={image}
-              style={{ height: '100%', width: '100%' }}
-              initialAspectRatio={imageWidth / imageHeight}
-              aspectRatio={imageWidth / imageHeight}
-              guides={true}
-              cropBoxResizable={true}
-              dragMode="move"
-              scalable={true}
-              zoomable={false} // Disable mouse wheel zoom
-              ref={cropperRef}
-            />
-            <div
-              className="position-absolute"
-              style={{
-                top: '10px',
-                right: '10px',
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                color: 'white',
-                padding: '5px',
-                borderRadius: '5px',
-              }}
-            >
-              {`Crop Size: ${cropData.width} x ${cropData.height}`}
+            <div className="form-group col-4">
+              <button
+                className="btn btn-secondary mt-4"
+                onClick={() => setIsCropperVisible(!isCropperVisible)}
+              >
+                {isCropperVisible ? 'Minimize Cropper' : 'Show Cropper'}
+              </button>
             </div>
           </div>
+        
+          {isCropperVisible && (
+            <div className="position-relative" style={{ height: 400 }}>
+              <Cropper
+                src={image}
+                style={{ height: '100%', width: '100%' }}
+                initialAspectRatio={imageWidth / imageHeight}
+                aspectRatio={imageWidth / imageHeight}
+                guides={true}
+                cropBoxResizable={true}
+                dragMode="move"
+                scalable={true}
+                zoomable={false} // Disable mouse wheel zoom
+                ref={cropperRef}
+              />
+              <div
+                className="position-absolute"
+                style={{
+                  top: '10px',
+                  right: '10px',
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  color: 'white',
+                  padding: '5px',
+                  borderRadius: '5px',
+                }}
+              >
+                {`Crop Size: ${cropData.width} x ${cropData.height}`}
+              </div>
+            </div>
+          )}
           {previewImage && (
             <div>
               <img src={previewImage} alt="Preview" className="img-fluid mb-4" />
