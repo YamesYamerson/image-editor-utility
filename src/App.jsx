@@ -1,10 +1,15 @@
 import React from 'react';
 import ImageEditor from './components/ImageEditor/ImageEditor';
+import Navbar from './components/Navbar/Navbar';
+import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <ImageEditor />
+      <Navbar />
+      <div className="container mt-0">
+        <ImageEditor />
+      </div>
     </div>
   );
 }

@@ -135,7 +135,7 @@ const ImageEditor = () => {
   }, []);
 
   return (
-    <div className="container text-center">
+    <div className="container text-center mt-4">
       {!image && (
         <div {...getRootProps({ className: 'dropzone border p-4 my-4' })}>
           <input {...getInputProps()} />
@@ -144,7 +144,7 @@ const ImageEditor = () => {
       )}
       {image && (
         <>
-          <div className="flex-row justify-content-center row my-4">
+          <div className="row justify-content-center my-4">
             <div className="form-group col-2">
               <label>
                 Width:
@@ -246,8 +246,8 @@ const ImageEditor = () => {
               </button>
             </div>
           </div>
-          <div className="row my-3 justify-content-center">
-            <div className="form-group col-4">
+          <div className="row justify-content-center my-3">
+            <div className="form-group col-3">
               <label>
                 Sizes:
                 <span
@@ -351,7 +351,7 @@ const ImageEditor = () => {
           )}
           <canvas ref={canvasRef} className="d-none"></canvas>
           <button className="btn btn-success" onClick={downloadImage}>
-            Download Edited Image
+            Download
           </button>
         </>
       )}
