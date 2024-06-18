@@ -247,7 +247,7 @@ const ImageEditor = () => {
             </div>
           </div>
           <div className="row my-3 justify-content-center">
-            <div className="form-group col-3">
+            <div className="form-group col-4">
               <label>
                 Sizes:
                 <span
