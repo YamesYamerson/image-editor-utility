@@ -1,31 +1,19 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import Cropper from 'react-easy-crop';
-import getCroppedImg from './cropImage'; // Utility function to get cropped image data
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
 import './ImageEditor.css';
 
-const standardSizes = {
-  mobile: [
-    { label: 'Mobile Small (320x480)', width: 320, height: 480 },
-    { label: 'Mobile Medium (375x667)', width: 375, height: 667 },
-    { label: 'Mobile Large (414x736)', width: 414, height: 736 },
-  ],
-  desktop: [
-    { label: 'Desktop Small (1366x768)', width: 1366, height: 768 },
-    { label: 'Desktop Medium (1440x900)', width: 1440, height: 900 },
-    { label: 'Desktop Large (1920x1080)', width: 1920, height: 1080 },
-    { label: 'Desktop Ultra-Wide (2560x1080)', width: 2560, height: 1080 },
-    { label: 'Desktop 4K (3840x2160)', width: 3840, height: 2160 },
-  ],
-  web: [
-    { label: 'Thumbnail (150x150)', width: 150, height: 150 },
-    { label: 'Banner (1200x300)', width: 1200, height: 300 },
-    { label: 'Facebook Cover (820x312)', width: 820, height: 312 },
-    { label: 'Instagram Post (1080x1080)', width: 1080, height: 1080 },
-    { label: 'Instagram Story (1080x1920)', width: 1080, height: 1920 },
-    { label: 'Twitter Post (1024x512)', width: 1024, height: 512 },
-  ],
-};
+const standardSizes = [
+  { label: 'Mobile Small (320x480)', width: 320, height: 480 },
+  { label: 'Mobile Medium (375x667)', width: 375, height: 667 },
+  { label: 'Mobile Large (414x736)', width: 414, height: 736 },
+  { label: 'Desktop Small (1366x768)', width: 1366, height: 768 },
+  { label: 'Desktop Medium (1440x900)', width: 1440, height: 900 },
+  { label: 'Desktop Large (1920x1080)', width: 1920, height: 1080 },
+  { label: 'Desktop Ultra-Wide (2560x1080)', width: 2560, height: 1080 },
+  { label: 'Desktop 4K (3840x2160)', width: 3840, height: 2160 },
+];
 
 const ImageEditor = () => {
   const [image, setImage] = useState(null);
@@ -33,14 +21,10 @@ const ImageEditor = () => {
   const [imageHeight, setImageHeight] = useState(600);
   const [columnWidth, setColumnWidth] = useState(20); // percentage of the image width
   const [columnOpacity, setColumnOpacity] = useState(0.9); // opacity of the column
-  const [selectedCategory, setSelectedCategory] = useState('web');
   const [previewImage, setPreviewImage] = useState(null);
   const [isColumnVisible, setIsColumnVisible] = useState(true); // toggle white column
-  const [isCropping, setIsCropping] = useState(false); // toggle cropping mode
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [croppedImage, setCroppedImage] = useState(null);
+  const [cropData, setCropData] = useState({ width: 0, height: 0 });
+  const cropperRef = useRef(null);
   const canvasRef = useRef(null);
 
   const onDrop = (acceptedFiles) => {
@@ -55,42 +39,14 @@ const ImageEditor = () => {
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
-  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
-
   const updatePreview = () => {
-    if (image && croppedAreaPixels) {
-      getCroppedImg(image, croppedAreaPixels).then((croppedImg) => {
-        setCroppedImage(croppedImg);
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.src = croppedImg;
-        img.onload = () => {
-          canvas.width = imageWidth;
-          canvas.height = imageHeight;
-          ctx.drawImage(img, 0, 0, imageWidth, imageHeight);
-
-          // Draw the white column if visible
-          if (isColumnVisible) {
-            const columnPxWidth = (canvas.width * columnWidth) / 100;
-            ctx.fillStyle = `rgba(255, 255, 255, ${columnOpacity})`;
-            ctx.fillRect((canvas.width - columnPxWidth) / 2, 0, columnPxWidth, canvas.height);
-          }
-
-          setPreviewImage(canvas.toDataURL());
-        };
+    if (cropperRef.current) {
+      const canvas = cropperRef.current.cropper.getCroppedCanvas({
+        width: imageWidth,
+        height: imageHeight,
       });
-    } else if (image) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.src = image;
-      img.onload = () => {
-        canvas.width = imageWidth;
-        canvas.height = imageHeight;
-        ctx.drawImage(img, 0, 0, imageWidth, imageHeight);
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
 
         // Draw the white column if visible
         if (isColumnVisible) {
@@ -100,44 +56,72 @@ const ImageEditor = () => {
         }
 
         setPreviewImage(canvas.toDataURL());
-      };
+        setCropData({ width: canvas.width, height: canvas.height });
+      }
     }
   };
 
   const downloadImage = () => {
-    const canvas = canvasRef.current;
-    const link = document.createElement('a');
-    link.download = 'edited-image.png';
-    link.href = canvas.toDataURL();
-    link.click();
+    const canvas = cropperRef.current.cropper.getCroppedCanvas({
+      width: imageWidth,
+      height: imageHeight,
+    });
+    if (canvas) {
+      const link = document.createElement('a');
+      link.download = 'edited-image.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
   };
 
   const handleStandardSizeChange = (size) => {
     setImageWidth(size.width);
     setImageHeight(size.height);
-    updatePreview();
   };
 
-  const handleCrop = () => {
-    setIsCropping(true);
-  };
-
-  const handleCropComplete = async () => {
-    try {
-      const croppedImg = await getCroppedImg(image, croppedAreaPixels);
-      setCroppedImage(croppedImg);
-      setPreviewImage(croppedImg);
-      setIsCropping(false);
-    } catch (e) {
-      console.error(e);
-      setIsCropping(false);
+  const setAspectRatio = (ratio) => {
+    if (cropperRef.current) {
+      cropperRef.current.cropper.setAspectRatio(ratio);
     }
   };
 
-  const handleCancelCrop = () => {
-    setIsCropping(false);
-    setPreviewImage(image);
-  };
+  useEffect(() => {
+    updatePreview();
+  }, [imageWidth, imageHeight, columnWidth, columnOpacity, isColumnVisible]);
+
+  useEffect(() => {
+    const updateCropData = () => {
+      const cropper = cropperRef.current?.cropper;
+      if (cropper) {
+        const { width, height } = cropper.getCropBoxData();
+        setCropData({ width, height });
+        updatePreview();
+      }
+    };
+
+    if (cropperRef.current) {
+      const cropper = cropperRef.current.cropper;
+      cropper.on('cropmove', updateCropData);
+      cropper.on('cropend', updateCropData);
+
+      return () => {
+        cropper.off('cropmove', updateCropData);
+        cropper.off('cropend', updateCropData);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    updatePreview();
+  }, [cropData]);
+
+  useEffect(() => {
+    // Initialize tooltips
+    const tooltipTriggerList = Array.from(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach((tooltipTriggerEl) => {
+      new window.bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  }, []);
 
   return (
     <div className="container text-center">
@@ -149,9 +133,19 @@ const ImageEditor = () => {
       )}
       {image && (
         <>
-          <div className="controls row my-4">
-            <div className="form-group col-4">
-              <label>Width:</label>
+          <div className="controls justify-content-center row my-4">
+            <div className="form-group col-2">
+              <label>
+                Width:
+                <span
+                  className="ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Adjust the width of the cropping area."
+                >
+                  <i className="bi bi-info-circle"></i>
+                </span>
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -159,8 +153,18 @@ const ImageEditor = () => {
                 onChange={(e) => setImageWidth(parseInt(e.target.value))}
               />
             </div>
-            <div className="form-group col-4">
-              <label>Height:</label>
+            <div className="form-group col-2">
+              <label>
+                Height:
+                <span
+                  className="ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Adjust the height of the cropping area."
+                >
+                  <i className="bi bi-info-circle"></i>
+                </span>
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -168,8 +172,18 @@ const ImageEditor = () => {
                 onChange={(e) => setImageHeight(parseInt(e.target.value))}
               />
             </div>
-            <div className="form-group col-4">
-              <label>Column Width (%):</label>
+            <div className="form-group col-2">
+              <label>
+                Column Width (%):
+                <span
+                  className="ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Adjust the width of the white column as a percentage of the image width."
+                >
+                  <i className="bi bi-info-circle"></i>
+                </span>
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -179,8 +193,18 @@ const ImageEditor = () => {
                 max="100"
               />
             </div>
-            <div className="form-group col-4">
-              <label>Column Opacity:</label>
+            <div className="form-group col-2">
+              <label>
+                Column Opacity:
+                <span
+                  className="ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Adjust the opacity of the white column."
+                >
+                  <i className="bi bi-info-circle"></i>
+                </span>
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -191,77 +215,109 @@ const ImageEditor = () => {
                 step="0.1"
               />
             </div>
-            <div className="form-group col-4">
-              <label>Show Column:</label>
+            <div className="form-group col-2">
+              <label>
+                Column Visibility:
+                <span
+                  className="ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Toggle the visibility of the white column."
+                >
+                  <i className="bi bi-info-circle"></i>
+                </span>
+              </label>
               <button
-                className={`btn ${isColumnVisible ? 'btn-danger' : 'btn-success'} form-control`}
+                className={`btn ${isColumnVisible ? 'btn-danger' : 'btn-success'} form-control mt-0`}
                 onClick={() => setIsColumnVisible(!isColumnVisible)}
               >
-                {isColumnVisible ? 'Hide' : 'Show'}
+                {isColumnVisible ? 'Hide Column' : 'Show Column'}
               </button>
             </div>
-            <div className="form-group col-4">
-              <label>Crop Image:</label>
-              <button
-                className={`btn ${isCropping ? 'btn-secondary' : 'btn-warning'} form-control`}
-                onClick={handleCrop}
-                disabled={isCropping}
-              >
-                {isCropping ? 'Cropping...' : 'Crop'}
-              </button>
-            </div>
+          </div>
+          <div className="row my-3">
             <div className="form-group col-6">
-              <label>Category:</label>
-              <select
-                className="form-control"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                <option value="web">Web</option>
-                <option value="mobile">Mobile</option>
-                <option value="desktop">Desktop</option>
-              </select>
-            </div>
-            <div className="form-group col-6">
-              <label>Standard Sizes:</label>
+              <label>
+                Background Sizes:
+                <span
+                  className="ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Select a predefined size for the background."
+                >
+                  <i className="bi bi-info-circle"></i>
+                </span>
+              </label>
               <select
                 className="form-control"
                 onChange={(e) => handleStandardSizeChange(JSON.parse(e.target.value))}
               >
                 <option value="">Select a size</option>
-                {standardSizes[selectedCategory].map((size, index) => (
+                {standardSizes.map((size, index) => (
                   <option key={index} value={JSON.stringify(size)}>
                     {size.label}
                   </option>
                 ))}
               </select>
             </div>
-            <div className="col-12">
-              <button className="btn btn-primary my-2" onClick={updatePreview}>
-                Apply Changes
-              </button>
+            <div className="col-6">
+              <label>
+                Aspect Ratio:
+                <span
+                  className="ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Adjust the aspect ratio of the cropping area."
+                >
+                  <i className="bi bi-info-circle"></i>
+                </span>
+              </label>
+              <div>
+                <button className="btn btn-secondary mx-1 mt-0" onClick={() => setAspectRatio(16 / 9)}>
+                  Desktop 16:9
+                </button>
+                <button className="btn btn-secondary mx-1 mt-0" onClick={() => setAspectRatio(9 / 16)}>
+                  Mobile 9:16
+                </button>
+                <button className="btn btn-secondary mx-1 mt-0" onClick={() => setAspectRatio(0)}>
+                  Free
+                </button>
+              </div>
             </div>
           </div>
-          {isCropping && (
-            <div className="crop-container" style={{ position: 'relative', height: '400px' }}>
-              <Cropper
-                image={image}
-                crop={crop}
-                zoom={zoom}
-                aspect={imageWidth / imageHeight}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
-              <button className="btn btn-success my-2" onClick={handleCropComplete}>
-                Complete Crop
-              </button>
-              <button className="btn btn-danger my-2" onClick={handleCancelCrop}>
-                Cancel Crop
-              </button>
+          <div className="position-relative" style={{ height: 400 }}>
+            <Cropper
+              src={image}
+              style={{ height: '100%', width: '100%' }}
+              initialAspectRatio={imageWidth / imageHeight}
+              aspectRatio={imageWidth / imageHeight}
+              guides={true}
+              cropBoxResizable={true}
+              dragMode="move"
+              scalable={true}
+              zoomable={false} // Disable mouse wheel zoom
+              ref={cropperRef}
+            />
+            <div
+              className="position-absolute"
+              style={{
+                top: '10px',
+                right: '10px',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                color: 'white',
+                padding: '5px',
+                borderRadius: '5px',
+              }}
+            >
+              {`Crop Size: ${cropData.width} x ${cropData.height}`}
+            </div>
+          </div>
+          {previewImage && (
+            <div>
+              <img src={previewImage} alt="Preview" className="img-fluid mb-4" />
+              <p>{`Preview Size: ${cropData.width} x ${cropData.height}`}</p>
             </div>
           )}
-          {!isCropping && previewImage && <img src={previewImage} alt="Preview" className="img-fluid mb-4" />}
           <canvas ref={canvasRef} className="d-none"></canvas>
           <button className="btn btn-success" onClick={downloadImage}>
             Download Edited Image
