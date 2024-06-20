@@ -1,18 +1,17 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useDropzone } from "react-dropzone";
-import Cropper from "react-cropper";
-import "cropperjs/dist/cropper.css";
-import "./ImageEditor.css";
+import React, { useState, useRef, useEffect } from 'react';
+import { useDropzone } from 'react-dropzone';
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
 
 const standardSizes = [
-  { label: "Mobile Small (320x480)", width: 320, height: 480 },
-  { label: "Mobile Medium (375x667)", width: 375, height: 667 },
-  { label: "Mobile Large (414x736)", width: 414, height: 736 },
-  { label: "Desktop Small (1366x768)", width: 1366, height: 768 },
-  { label: "Desktop Medium (1440x900)", width: 1440, height: 900 },
-  { label: "Desktop Large (1920x1080)", width: 1920, height: 1080 },
-  { label: "Desktop Ultra-Wide (2560x1080)", width: 2560, height: 1080 },
-  { label: "Desktop 4K (3840x2160)", width: 3840, height: 2160 },
+  { label: 'Mobile Small (320x480)', width: 320, height: 480 },
+  { label: 'Mobile Medium (375x667)', width: 375, height: 667 },
+  { label: 'Mobile Large (414x736)', width: 414, height: 736 },
+  { label: 'Desktop Small (1366x768)', width: 1366, height: 768 },
+  { label: 'Desktop Medium (1440x900)', width: 1440, height: 900 },
+  { label: 'Desktop Large (1920x1080)', width: 1920, height: 1080 },
+  { label: 'Desktop Ultra-Wide (2560x1080)', width: 2560, height: 1080 },
+  { label: 'Desktop 4K (3840x2160)', width: 3840, height: 2160 },
 ];
 
 const ImageEditor = () => {
@@ -22,8 +21,8 @@ const ImageEditor = () => {
   const [columnWidth, setColumnWidth] = useState(60); // percentage of the image width
   const [columnOpacity, setColumnOpacity] = useState(0.9); // opacity of the column
   const [previewImage, setPreviewImage] = useState(null);
-  const [isColumnVisible, setIsColumnVisible] = useState(true); // toggle white column
-  const [cropData, setCropData] = useState({ width: 0, height: 0 });
+  const [tolerance, setTolerance] = useState(30); // tolerance for the magic wand tool
+  const [isColumnVisible, setIsColumnVisible] = useState(true); // toggle central column
   const [aspectRatio, setAspectRatio] = useState(0);
   const [isCropperVisible, setIsCropperVisible] = useState(true); // toggle cropper visibility
   const cropperRef = useRef(null);
@@ -55,22 +54,14 @@ const ImageEditor = () => {
         height: imageHeight,
       });
       if (canvas) {
-        const ctx = canvas.getContext("2d");
-
-        // Draw the white column if visible
+        const ctx = canvas.getContext('2d');
+        
         if (isColumnVisible) {
-          const columnPxWidth = (canvas.width * columnWidth) / 100;
-          ctx.fillStyle = `rgba(255, 255, 255, ${columnOpacity})`;
-          ctx.fillRect(
-            (canvas.width - columnPxWidth) / 2,
-            0,
-            columnPxWidth,
-            canvas.height
-          );
+          // Apply magic wand tool to the central column
+          applyMagicWand(ctx, canvas, tolerance);
         }
 
         setPreviewImage(canvas.toDataURL());
-        setCropData({ width: canvas.width, height: canvas.height });
       }
     }
   };
@@ -81,8 +72,8 @@ const ImageEditor = () => {
       height: imageHeight,
     });
     if (canvas) {
-      const link = document.createElement("a");
-      link.download = "edited-image.png";
+      const link = document.createElement('a');
+      link.download = 'edited-image.png';
       link.href = canvas.toDataURL();
       link.click();
     }
@@ -101,52 +92,56 @@ const ImageEditor = () => {
     }
   };
 
+  const applyMagicWand = (ctx, canvas, tolerance) => {
+    const columnPxWidth = (canvas.width * columnWidth) / 100;
+    const startX = (canvas.width - columnPxWidth) / 2;
+    const endX = startX + columnPxWidth;
+
+    const imageData = ctx.getImageData(startX, 0, columnPxWidth, canvas.height);
+    const data = imageData.data;
+    const threshold = tolerance * 255 / 100;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      if (Math.abs(r - 255) < threshold && Math.abs(g - 255) < threshold && Math.abs(b - 255) < threshold) {
+        data[i + 3] = 0; // Make the pixel transparent
+      }
+    }
+
+    ctx.putImageData(imageData, startX, 0);
+  };
+
   useEffect(() => {
     updatePreview();
-  }, [imageWidth, imageHeight, columnWidth, columnOpacity, isColumnVisible]);
+  }, [imageWidth, imageHeight, tolerance, columnWidth, columnOpacity, isColumnVisible]);
 
   useEffect(() => {
     const updateCropData = () => {
       const cropper = cropperRef.current?.cropper;
       if (cropper) {
-        const { width, height } = cropper.getCropBoxData();
-        setCropData({ width, height });
         updatePreview();
       }
     };
 
     if (cropperRef.current) {
       const cropper = cropperRef.current.cropper;
-      cropper.on("cropmove", updateCropData);
-      cropper.on("cropend", updateCropData);
+      cropper.on('cropmove', updateCropData);
+      cropper.on('cropend', updateCropData);
 
       return () => {
-        cropper.off("cropmove", updateCropData);
-        cropper.off("cropend", updateCropData);
+        cropper.off('cropmove', updateCropData);
+        cropper.off('cropend', updateCropData);
       };
     }
   }, []);
 
-  useEffect(() => {
-    updatePreview();
-  }, [cropData]);
-
-  useEffect(() => {
-    // Initialize tooltips
-    const tooltipTriggerList = Array.from(
-      document.querySelectorAll('[data-bs-toggle="tooltip"]')
-    );
-    tooltipTriggerList.forEach((tooltipTriggerEl) => {
-      new window.bootstrap.Tooltip(tooltipTriggerEl);
-    });
-  }, []);
-
   return (
     <div className="container text-center mt-4">
-      <h1>Background Image Editor</h1>
-
+        <h1>Magic Wand Editor</h1>
       {!image && (
-        <div {...getRootProps({ className: "dropzone border p-4 my-4" })}>
+        <div {...getRootProps({ className: 'dropzone border p-4 my-4' })}>
           <input {...getInputProps()} />
           <p>Drag & drop an image here, or click to select one</p>
         </div>
@@ -157,14 +152,6 @@ const ImageEditor = () => {
             <div className="form-group col-2">
               <label>
                 Width:
-                <span
-                  className="ms-1"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="top"
-                  title="Adjust the width of the cropping area."
-                >
-                  <i className="bi bi-info-circle"></i>
-                </span>
               </label>
               <input
                 type="number"
@@ -176,14 +163,6 @@ const ImageEditor = () => {
             <div className="form-group col-2">
               <label>
                 Height:
-                <span
-                  className="ms-1"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="top"
-                  title="Adjust the height of the cropping area."
-                >
-                  <i className="bi bi-info-circle"></i>
-                </span>
               </label>
               <input
                 type="number"
@@ -194,15 +173,20 @@ const ImageEditor = () => {
             </div>
             <div className="form-group col-2">
               <label>
-                Col. Width (%):
-                <span
-                  className="ms-1"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="top"
-                  title="Adjust the width of the white column as a percentage of the image width."
-                >
-                  <i className="bi bi-info-circle"></i>
-                </span>
+                Tolerance:
+              </label>
+              <input
+                type="number"
+                className="form-control"
+                value={tolerance}
+                onChange={(e) => setTolerance(parseInt(e.target.value))}
+                min="0"
+                max="100"
+              />
+            </div>
+            <div className="form-group col-2">
+              <label>
+                Column Width (%):
               </label>
               <input
                 type="number"
@@ -215,15 +199,7 @@ const ImageEditor = () => {
             </div>
             <div className="form-group col-2">
               <label>
-                Col. Opacity:
-                <span
-                  className="ms-1"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="top"
-                  title="Adjust the opacity of the white column."
-                >
-                  <i className="bi bi-info-circle"></i>
-                </span>
+                Column Opacity:
               </label>
               <input
                 type="number"
@@ -238,22 +214,12 @@ const ImageEditor = () => {
             <div className="form-group col-2">
               <label>
                 Column:
-                <span
-                  className="ms-1"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="top"
-                  title="Toggle the visibility of the white column."
-                >
-                  <i className="bi bi-info-circle"></i>
-                </span>
               </label>
               <button
-                className={`btn ${
-                  isColumnVisible ? "btn-danger" : "btn-success"
-                } form-control mt-0`}
+                className={`btn ${isColumnVisible ? 'btn-danger' : 'btn-success'} form-control mt-0`}
                 onClick={() => setIsColumnVisible(!isColumnVisible)}
               >
-                {isColumnVisible ? "Hide Column" : "Show Column"}
+                {isColumnVisible ? 'Hide Column' : 'Show Column'}
               </button>
             </div>
           </div>
@@ -261,20 +227,10 @@ const ImageEditor = () => {
             <div className="form-group col-3">
               <label>
                 Sizes:
-                <span
-                  className="ms-1"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="top"
-                  title="Select a predefined size for the background. The size of the output image is limited by the uploaded image size."
-                >
-                  <i className="bi bi-info-circle"></i>
-                </span>
               </label>
               <select
                 className="form-control"
-                onChange={(e) =>
-                  handleStandardSizeChange(JSON.parse(e.target.value))
-                }
+                onChange={(e) => handleStandardSizeChange(JSON.parse(e.target.value))}
               >
                 <option value="">Select a size</option>
                 {standardSizes.map((size, index) => (
@@ -287,36 +243,22 @@ const ImageEditor = () => {
             <div className="form-group col-4">
               <label>
                 Aspect Ratio:
-                <span
-                  className="ms-1"
-                  data-bs-toggle="tooltip"
-                  data-bs-placement="top"
-                  title="Adjust the aspect ratio of the cropping area. 16:9 is for landscape, 9:16 is for portrait, and Free is for custom sizes."
-                >
-                  <i className="bi bi-info-circle"></i>
-                </span>
               </label>
               <div className="d-flex justify-content-around">
                 <button
-                  className={`btn ${
-                    aspectRatio === 16 / 9 ? "btn-primary" : "btn-secondary"
-                  } mx-1 mt-0 flex-fill`}
+                  className={`btn ${aspectRatio === 16 / 9 ? 'btn-primary' : 'btn-secondary'} mx-1 mt-0 flex-fill`}
                   onClick={() => changeAspectRatio(16 / 9)}
                 >
                   16:9
                 </button>
                 <button
-                  className={`btn ${
-                    aspectRatio === 9 / 16 ? "btn-primary" : "btn-secondary"
-                  } mx-1 mt-0 flex-fill`}
+                  className={`btn ${aspectRatio === 9 / 16 ? 'btn-primary' : 'btn-secondary'} mx-1 mt-0 flex-fill`}
                   onClick={() => changeAspectRatio(9 / 16)}
                 >
                   9:16
                 </button>
                 <button
-                  className={`btn ${
-                    aspectRatio === 0 ? "btn-primary" : "btn-secondary"
-                  } mx-1 mt-0 flex-fill`}
+                  className={`btn ${aspectRatio === 0 ? 'btn-primary' : 'btn-secondary'} mx-1 mt-0 flex-fill`}
                   onClick={() => changeAspectRatio(0)}
                 >
                   Free
@@ -328,16 +270,16 @@ const ImageEditor = () => {
                 className="btn btn-secondary mt-4"
                 onClick={() => setIsCropperVisible(!isCropperVisible)}
               >
-                {isCropperVisible ? "Minimize Cropper" : "Show Cropper"}
+                {isCropperVisible ? 'Minimize Cropper' : 'Show Cropper'}
               </button>
             </div>
           </div>
-
+        
           {isCropperVisible && (
             <div className="position-relative" style={{ height: 400 }}>
               <Cropper
                 src={image}
-                style={{ height: "100%", width: "100%" }}
+                style={{ height: '100%', width: '100%' }}
                 initialAspectRatio={imageWidth / imageHeight}
                 aspectRatio={imageWidth / imageHeight}
                 guides={true}
@@ -347,29 +289,12 @@ const ImageEditor = () => {
                 zoomable={false} // Disable mouse wheel zoom
                 ref={cropperRef}
               />
-              <div
-                className="position-absolute"
-                style={{
-                  top: "10px",
-                  right: "10px",
-                  backgroundColor: "rgba(0,0,0,0.5)",
-                  color: "white",
-                  padding: "5px",
-                  borderRadius: "5px",
-                }}
-              >
-                {`Crop Size: ${cropData.width} x ${cropData.height}`}
-              </div>
             </div>
           )}
           {previewImage && (
             <div>
-              <img
-                src={previewImage}
-                alt="Preview"
-                className="img-fluid mb-4"
-              />
-              <p>{`Preview Size: ${cropData.width} x ${cropData.height}`}</p>
+              <img src={previewImage} alt="Preview" className="img-fluid mb-4" />
+              <p>{`Preview Size: ${imageWidth} x ${imageHeight}`}</p>
             </div>
           )}
           <canvas ref={canvasRef} className="d-none"></canvas>

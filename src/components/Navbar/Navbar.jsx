@@ -17,6 +17,9 @@ const Navbar = () => {
             <li className="nav-item">
               <Link className="nav-link" to="/image-editor">Background Editor</Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" to="/wand-editor">Magic Wand Editor</Link>
+            </li>
           </ul>
         </div>
       </div>

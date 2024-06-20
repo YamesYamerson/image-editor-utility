@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 const BatchIconEditor = () => {
   const [sourceFolder, setSourceFolder] = useState([]);
-  const [outputFolder, setOutputFolder] = useState('');
+  const [outputFolder, setOutputFolder] = useState(null);
   const [saveToOriginal, setSaveToOriginal] = useState(false);
   const [dimensions, setDimensions] = useState('200x200');
   const [padding, setPadding] = useState('25');
@@ -14,10 +14,6 @@ const BatchIconEditor = () => {
 
   const handleSourceFolderChange = (event) => {
     setSourceFolder(event.target.files);
-  };
-
-  const handleOutputFolderChange = (event) => {
-    setOutputFolder(event.target.value);
   };
 
   const handleProcessImages = () => {
@@ -70,57 +66,57 @@ const BatchIconEditor = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <h1>Batch Icon Processor</h1>
-      <p>
+    <div className="container mt-4 text-center">
+      <h1 className="mb-4">Batch Icon Processor</h1>
+      <p className="mb-5">
         This application is designed for creating square aspect ratio icons with transparent backgrounds.
         You can choose the dimensions of the rescale and the amount of padding to add to the images.
       </p>
 
-      <div className="mb-3">
-        <label className="form-label">Select Source Folder</label>
-        <input type="file" className="form-control" multiple webkitdirectory="true" onChange={handleSourceFolderChange} />
-      </div>
+      <div className="row justify-content-center">
+        <div className="col-md-8">
+          <div className="d-flex row">
+            <div className="mb-4 col-8">
+              <label className="form-label">Select Source Folder</label>
+              <input type="file" className="form-control" multiple webkitdirectory="true" onChange={handleSourceFolderChange} />
+            </div>
+            <div className="form-check mb-4 col-4">
+              <input type="checkbox" className="form-check-input" id="saveToOriginal" checked={saveToOriginal} onChange={() => setSaveToOriginal(!saveToOriginal)} />
+              <label className="form-check-label" htmlFor="saveToOriginal">Save files to their original directories</label>
+            </div>
+          </div>
 
-      <div className="mb-3">
-        <label className="form-label">Select Output Folder</label>
-        <input type="text" className="form-control" value={outputFolder} onChange={handleOutputFolderChange} placeholder="Output folder path" />
+          <div class="d-flex row">
+            <div className="mb-4 col-5">
+              <label className="form-label">Enter the dimensions for rescale (width x height):</label>
+              <input type="text" className="form-control" value={dimensions} onChange={(e) => setDimensions(e.target.value)} />
+            </div>
+            <div className="mb-4 col-5">
+              <label className="form-label">Enter the amount of padding to add:</label>
+              <input type="text" className="form-control" value={padding} onChange={(e) => setPadding(e.target.value)} />
+            </div>
+            <button className="btn btn-primary mb-4 col-2" onClick={handleProcessImages}>Process Images</button>
+          </div>
+        </div>
       </div>
-
-      <div className="form-check mb-3">
-        <input type="checkbox" className="form-check-input" id="saveToOriginal" checked={saveToOriginal} onChange={() => setSaveToOriginal(!saveToOriginal)} />
-        <label className="form-check-label" htmlFor="saveToOriginal">Save files to their original directories</label>
-      </div>
-
-      <div className="mb-3">
-        <label className="form-label">Enter the dimensions for rescale (width x height):</label>
-        <input type="text" className="form-control" value={dimensions} onChange={(e) => setDimensions(e.target.value)} />
-      </div>
-
-      <div className="mb-3">
-        <label className="form-label">Enter the amount of padding to add:</label>
-        <input type="text" className="form-control" value={padding} onChange={(e) => setPadding(e.target.value)} />
-      </div>
-
-      <button className="btn btn-primary" onClick={handleProcessImages}>Process Images</button>
 
       {showPreview && (
         <div className="mt-5">
-          <h2>Preview Processed Images</h2>
-          <div className="d-flex flex-wrap">
+          <h2 className="mb-4">Preview Processed Images</h2>
+          <div className="d-flex flex-wrap justify-content-center">
             {previews.map((preview, index) => (
               <div key={index} className="p-2">
                 <img src={preview} alt={`Preview ${index}`} className="img-thumbnail" />
               </div>
             ))}
           </div>
-          <button className="btn btn-success mt-3" onClick={handleConfirm}>Confirm</button>
+          <button className="btn btn-success mt-4" onClick={handleConfirm}>Confirm</button>
         </div>
       )}
 
       {showResults && (
         <div className="mt-5">
-          <h2>Processing Results</h2>
+          <h2 className="mb-4">Processing Results</h2>
           <div className="alert alert-info">
             <h4>Altered Images ({alteredImages.length}):</h4>
             <ul>
