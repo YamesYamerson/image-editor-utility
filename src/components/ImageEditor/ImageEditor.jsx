@@ -76,15 +76,31 @@ const ImageEditor = () => {
   };
 
   const downloadImage = () => {
-    const canvas = cropperRef.current.cropper.getCroppedCanvas({
-      width: imageWidth,
-      height: imageHeight,
-    });
-    if (canvas) {
-      const link = document.createElement("a");
-      link.download = "edited-image.png";
-      link.href = canvas.toDataURL();
-      link.click();
+    if (cropperRef.current) {
+      const canvas = cropperRef.current.cropper.getCroppedCanvas({
+        width: imageWidth,
+        height: imageHeight,
+      });
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+
+        // Draw the white column if visible
+        if (isColumnVisible) {
+          const columnPxWidth = (canvas.width * columnWidth) / 100;
+          ctx.fillStyle = `rgba(255, 255, 255, ${columnOpacity})`;
+          ctx.fillRect(
+            (canvas.width - columnPxWidth) / 2,
+            0,
+            columnPxWidth,
+            canvas.height
+          );
+        }
+
+        const link = document.createElement("a");
+        link.download = "edited-image.png";
+        link.href = canvas.toDataURL();
+        link.click();
+      }
     }
   };
 
