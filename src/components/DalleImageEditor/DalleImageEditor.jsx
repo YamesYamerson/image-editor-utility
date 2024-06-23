@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
 import { useDropzone } from "react-dropzone";
 import Cropper from "react-cropper";
 import "cropperjs/dist/cropper.css";
-import "./ImageEditor.css";
+import DalleInputWindow from "../DalleInputWindow/DalleInputWindow";
 
 const standardSizes = [
   { label: "Mobile Small (320x480)", width: 320, height: 480 },
@@ -26,8 +27,11 @@ const ImageEditor = () => {
   const [cropData, setCropData] = useState({ width: 0, height: 0 });
   const [aspectRatio, setAspectRatio] = useState(0);
   const [isCropperVisible, setIsCropperVisible] = useState(true); // toggle cropper visibility
+  const [prompt, setPrompt] = useState(""); // new state for the prompt
   const cropperRef = useRef(null);
   const canvasRef = useRef(null);
+
+  <DalleInputWindow/>;
 
   const onDrop = (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -160,6 +164,19 @@ const ImageEditor = () => {
   return (
     <div className="container text-center mt-4">
       <h1>Background Image Editor</h1>
+
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Enter prompt for image generation"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          className="form-control mb-2"
+        />
+        <button className="btn btn-primary" onClick={generateImage}>
+          Generate Image
+        </button>
+      </div>
 
       {!image && (
         <div {...getRootProps({ className: "dropzone border p-4 my-4" })}>
@@ -344,7 +361,7 @@ const ImageEditor = () => {
                 className="btn btn-secondary mt-4"
                 onClick={() => setIsCropperVisible(!isCropperVisible)}
               >
-                {isCropperVisible ? "Minimize Crop" : "Show Crop"}
+                {isCropperVisible ? "Minimize Cropper" : "Show Cropper"}
               </button>
             </div>
           </div>
