@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import { useDropzone } from "react-dropzone";
 import Cropper from "react-cropper";
 import "cropperjs/dist/cropper.css";
