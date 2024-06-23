@@ -3,7 +3,7 @@ import axios from "axios";
 import { useDropzone } from "react-dropzone";
 import Cropper from "react-cropper";
 import "cropperjs/dist/cropper.css";
-import DalleInputWindow from "../DalleInputWindow/DalleInputWindow";
+import DalleInputWindow from "../DalleInputWindow/DalleInputWindow"; // Adjust the import path as necessary
 
 const standardSizes = [
   { label: "Mobile Small (320x480)", width: 320, height: 480 },
@@ -16,7 +16,7 @@ const standardSizes = [
   { label: "Desktop 4K (3840x2160)", width: 3840, height: 2160 },
 ];
 
-const ImageEditor = () => {
+const DalleImageEditor = () => {
   const [image, setImage] = useState(null);
   const [imageWidth, setImageWidth] = useState(800);
   const [imageHeight, setImageHeight] = useState(600);
@@ -27,12 +27,52 @@ const ImageEditor = () => {
   const [cropData, setCropData] = useState({ width: 0, height: 0 });
   const [aspectRatio, setAspectRatio] = useState(0);
   const [isCropperVisible, setIsCropperVisible] = useState(true); // toggle cropper visibility
-  const [prompt, setPrompt] = useState(""); // new state for the prompt
+  const [loading, setLoading] = useState(false);
   const cropperRef = useRef(null);
   const canvasRef = useRef(null);
 
-  <DalleInputWindow/>;
-
+  const generateImage = async (prompt) => {
+    try {
+      const apiKey = import.meta.env.VITE_DALLE_SECRET_KEY;
+      if (!apiKey) {
+        throw new Error("API key is missing");
+      }
+      if (!prompt.trim()) {
+        throw new Error("Prompt is empty");
+      }
+  
+      setLoading(true);
+  
+      const response = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          n: 1,
+          size: "1024x1024",
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error.message);
+      }
+  
+      const data = await response.json();
+      console.log("API Response:", data);
+      setImage(data.data[0].url);
+      setPreviewImage(data.data[0].url);
+    } catch (error) {
+      console.error("Error generating image:", error);
+      alert(`Error generating image: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const onDrop = (acceptedFiles) => {
     const file = acceptedFiles[0];
     const reader = new FileReader();
@@ -163,20 +203,9 @@ const ImageEditor = () => {
 
   return (
     <div className="container text-center mt-4">
-      <h1>Background Image Editor</h1>
+      <h1>Dalle Image Editor</h1>
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Enter prompt for image generation"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          className="form-control mb-2"
-        />
-        <button className="btn btn-primary" onClick={generateImage}>
-          Generate Image
-        </button>
-      </div>
+      <DalleInputWindow generateImage={generateImage} loading={loading} />
 
       {!image && (
         <div {...getRootProps({ className: "dropzone border p-4 my-4" })}>
@@ -415,4 +444,4 @@ const ImageEditor = () => {
   );
 };
 
-export default ImageEditor;
+export default DalleImageEditor;
